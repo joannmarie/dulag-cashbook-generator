@@ -1,17 +1,59 @@
 import { generateCashbook } from '../utils/generateCashbook.js'
 
 function peso(n) {
-  return '₱ ' + (n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return '₱ ' + (n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function StatCard({ label, value, color }) {
-  return (
-    <div className={`rounded-xl border p-4 flex flex-col gap-1 ${color}`}>
-      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
-      <span className="text-lg font-bold text-gray-800">{peso(value)}</span>
-    </div>
-  )
-}
+const STAT_CARDS = [
+  {
+    key: 'beginningBalance',
+    label: 'Beginning Balance',
+    color: 'bg-blue-50 border-blue-100',
+    iconBg: 'bg-blue-100',
+    iconColor: 'text-blue-600',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    ),
+  },
+  {
+    key: 'totalDebit',
+    label: 'Total Collections',
+    color: 'bg-emerald-50 border-emerald-100',
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+      </svg>
+    ),
+  },
+  {
+    key: 'totalCredit',
+    label: 'Total Deposits',
+    color: 'bg-orange-50 border-orange-100',
+    iconBg: 'bg-orange-100',
+    iconColor: 'text-orange-600',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+      </svg>
+    ),
+  },
+  {
+    key: 'endingBalance',
+    label: 'Ending Balance',
+    color: 'bg-purple-50 border-purple-100',
+    iconBg: 'bg-purple-100',
+    iconColor: 'text-purple-600',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+]
 
 export default function PreviewStep({ sheet, treasurerName, onBack }) {
   const { label, lastDay, beginningBalance, entries, endingBalance } = sheet
@@ -19,109 +61,135 @@ export default function PreviewStep({ sheet, treasurerName, onBack }) {
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0)
   const preview = entries.slice(0, 5)
 
-  function handleDownload() {
-    generateCashbook(sheet, treasurerName)
-  }
+  const statValues = { beginningBalance, totalDebit, totalCredit, endingBalance }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700 mb-1">Preview — {label}</h2>
-        <p className="text-sm text-gray-500">Review before downloading.</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-1">Preview — {label}</h2>
+        <p className="text-sm text-slate-500">Review the summary before downloading your cashbook.</p>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Beginning Balance" value={beginningBalance} color="bg-blue-50 border-blue-100" />
-        <StatCard label="Total Collections" value={totalDebit} color="bg-green-50 border-green-100" />
-        <StatCard label="Total Deposits" value={totalCredit} color="bg-orange-50 border-orange-100" />
-        <StatCard label="Ending Balance" value={endingBalance} color="bg-purple-50 border-purple-100" />
-      </div>
-
-      {/* Table preview */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-[#185FA5] text-white">
-              {['Date', 'Particulars', 'Reference', 'Debit', 'Credit', 'Balance'].map((h) => (
-                <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="bg-gray-50 italic text-gray-500">
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2">Beginning Balance</td>
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2 text-right">{peso(beginningBalance)}</td>
-            </tr>
-            {preview.map((e, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-3 py-2 whitespace-nowrap">{e.dateSerial ? `—` : ''}</td>
-                <td className="px-3 py-2 max-w-xs truncate">{e.particulars}</td>
-                <td className="px-3 py-2">{e.reference}</td>
-                <td className="px-3 py-2 text-right">{e.debit ? peso(e.debit) : ''}</td>
-                <td className="px-3 py-2 text-right">{e.credit ? peso(e.credit) : ''}</td>
-                <td className="px-3 py-2 text-right">{peso(e.balance)}</td>
-              </tr>
-            ))}
-            {entries.length > 5 && (
-              <tr className="bg-gray-50 text-gray-400">
-                <td colSpan={6} className="px-3 py-2 text-center text-xs italic">
-                  … {entries.length - 5} more row{entries.length - 5 > 1 ? 's' : ''} not shown
-                </td>
-              </tr>
-            )}
-            <tr className="bg-gray-200 font-bold">
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2 text-right">TOTAL</td>
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2 text-right">{peso(totalDebit)}</td>
-              <td className="px-3 py-2 text-right">{peso(totalCredit)}</td>
-              <td className="px-3 py-2 text-right">{peso(endingBalance)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Certification block */}
-      <div className="border border-gray-200 rounded-xl p-4 bg-gray-50 text-sm text-gray-600">
-        <p className="font-semibold text-gray-700 mb-2">CERTIFICATION</p>
-        <p className="italic leading-relaxed">
-          I hereby certify that the foregoing is a correct and complete record of all my
-          collections, deposits/remittances, and balances of my accounts in the Cash in
-          Treasury as of <span className="font-medium not-italic">{lastDay}</span>.
-        </p>
-        <div className="mt-6 flex justify-between text-sm">
-          <div className="text-center">
-            <div className="border-b border-gray-700 pb-1 px-8 font-semibold">{treasurerName.toUpperCase()}</div>
-            <div className="text-xs text-gray-500 mt-1">Municipal Treasurer</div>
+      <div className="grid grid-cols-2 gap-3">
+        {STAT_CARDS.map(({ key, label: cardLabel, color, iconBg, iconColor, icon }) => (
+          <div key={key} className={`stat-card rounded-2xl border p-4 flex items-start gap-3 ${color}`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+              <div className={iconColor}>{icon}</div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide leading-tight">{cardLabel}</p>
+              <p className="text-base font-bold text-slate-800 mt-0.5">{peso(statValues[key])}</p>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="border-b border-gray-700 pb-1 px-8">{lastDay}</div>
-            <div className="text-xs text-gray-500 mt-1">Date</div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Transaction Preview</p>
+          <span className="text-xs text-slate-400">{entries.length} total row{entries.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-[#1a3557]">
+                  {['Date', 'Particulars', 'Reference', 'Debit', 'Credit', 'Balance'].map((h) => (
+                    <th key={h} className="px-3 py-2.5 text-left text-white font-semibold whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="bg-blue-50 border-b border-slate-100">
+                  <td className="px-3 py-2 text-slate-400 italic"></td>
+                  <td className="px-3 py-2 text-slate-600 italic font-medium">Beginning Balance</td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2"></td>
+                  <td className="px-3 py-2 text-right font-semibold text-slate-700">{peso(beginningBalance)}</td>
+                </tr>
+                {preview.map((e, i) => (
+                  <tr key={i} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">—</td>
+                    <td className="px-3 py-2 text-slate-700 max-w-[160px] truncate">{e.particulars}</td>
+                    <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">{e.reference}</td>
+                    <td className="px-3 py-2 text-right text-emerald-700">{e.debit ? peso(e.debit) : ''}</td>
+                    <td className="px-3 py-2 text-right text-orange-600">{e.credit ? peso(e.credit) : ''}</td>
+                    <td className="px-3 py-2 text-right font-medium text-slate-700">{peso(e.balance)}</td>
+                  </tr>
+                ))}
+                {entries.length > 5 && (
+                  <tr className="bg-slate-50">
+                    <td colSpan={6} className="px-3 py-2.5 text-center text-xs text-slate-400 italic">
+                      +{entries.length - 5} more row{entries.length - 5 > 1 ? 's' : ''} in the downloaded file
+                    </td>
+                  </tr>
+                )}
+                <tr className="bg-[#1a3557]">
+                  <td className="px-3 py-2.5"></td>
+                  <td className="px-3 py-2.5 text-right text-white font-bold">TOTAL</td>
+                  <td className="px-3 py-2.5"></td>
+                  <td className="px-3 py-2.5 text-right text-emerald-300 font-bold">{peso(totalDebit)}</td>
+                  <td className="px-3 py-2.5 text-right text-orange-300 font-bold">{peso(totalCredit)}</td>
+                  <td className="px-3 py-2.5 text-right text-amber-300 font-bold">{peso(endingBalance)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Certification preview */}
+      <div className="border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center gap-2">
+          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Certification</span>
+        </div>
+        <div className="px-6 py-5 bg-white">
+          <p className="text-sm text-slate-600 italic leading-relaxed">
+            I hereby certify that the foregoing is a correct and complete record of all my
+            collections, deposits/remittances, and balances of my accounts in the Cash in
+            Treasury as of <span className="font-semibold not-italic text-slate-800">{lastDay}</span>.
+          </p>
+          <div className="mt-6 flex justify-between">
+            <div className="text-center">
+              <div className="border-b-2 border-slate-700 pb-1 px-6 min-w-[160px] font-bold text-sm text-slate-800">
+                {treasurerName.toUpperCase() || ' '}
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">Municipal Treasurer</p>
+            </div>
+            <div className="text-center">
+              <div className="border-b-2 border-slate-700 pb-1 px-6 min-w-[120px] text-sm text-slate-700">
+                {lastDay}
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">Date</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="flex justify-between pt-2">
+      <div className="flex justify-between pt-1">
         <button
           onClick={onBack}
-          className="px-5 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+          className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
         >
-          ← Back
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
         </button>
         <button
-          onClick={handleDownload}
+          onClick={() => generateCashbook(sheet, treasurerName)}
           disabled={!treasurerName.trim()}
-          className="px-6 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+          className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-md shadow-emerald-200"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           Download .xlsx
         </button>
