@@ -121,6 +121,7 @@ export function groupByMonth(allEntries) {
         month: rcd.month,
         year: rcd.year,
         lastDay: `${MONTH_NAMES[rcd.month]} ${last}, ${rcd.year}`,
+        monthRange: `${MONTH_NAMES[rcd.month]} 1 to ${last}, ${rcd.year}`,
         rcds: [],
         entries: [],
         beginningBalance: 0,
@@ -139,7 +140,7 @@ export function groupByMonth(allEntries) {
     const rows = []
     for (const rcd of group.rcds) {
       const particulars = `Report of Collections & Deposit - ${rcd.reportNo}`
-      const fullDate = `${rcd.month}/${rcd.day}/${rcd.year}`
+      const fullDate = `${rcd.month}/${String(rcd.day).padStart(2, '0')}/${rcd.year}`
 
       // Row 1 — Collection (Debit)
       rows.push({

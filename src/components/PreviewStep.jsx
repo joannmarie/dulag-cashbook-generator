@@ -190,7 +190,7 @@ export default function PreviewStep({ sheet, treasurerName, onBack }) {
           Back
         </button>
         <button
-          onClick={() => generateCashbook(sheet, treasurerName)}
+          onClick={() => generateCashbook(sheet, treasurerName).catch(err => alert('Error generating cashbook: ' + err.message))}
           disabled={!treasurerName.trim()}
           className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-md shadow-emerald-200"
         >

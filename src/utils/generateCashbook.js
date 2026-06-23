@@ -1,171 +1,126 @@
 import * as XLSX from 'xlsx'
 
-const NAVY       = '1A3557'
-const LIGHT_BLUE = 'DDEEFF'
-const GRAY       = 'D9D9D9'
-const NUM_FMT    = '#,##0.00'
+export async function generateCashbook(sheetData, treasurerName) {
+  const { label, year, monthRange, lastDay, beginningBalance, entries } = sheetData
 
-function s(style) { return style }
+  const res = await fetch('/Cashbook.xlsx')
+  const buf = await res.arrayBuffer()
+  const wb = XLSX.read(buf, { type: 'array', cellStyles: true })
 
-function setCell(ws, r, c, v, t = 's', style = {}, z) {
-  const addr = XLSX.utils.encode_cell({ r, c })
-  ws[addr] = { v, t, s: style, ...(z ? { z } : {}) }
-}
+  const origName = wb.SheetNames[0]
+  const tmpl = wb.Sheets[origName]
 
-function merge(r1, c1, r2, c2) {
-  return { s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }
-}
+  // Get style from a template cell
+  const ts = (addr) => tmpl[addr]?.s || {}
 
-const CENTER = { alignment: { horizontal: 'center', vertical: 'center' } }
-const CENTER_BOLD = { font: { bold: true }, alignment: { horizontal: 'center', vertical: 'center' } }
-const BOLD   = { font: { bold: true } }
-const ITALIC = { font: { italic: true } }
+  // Clone template sheet (deep copy all cells)
+  const ws = {}
+  for (const key in tmpl) {
+    if (key.startsWith('!')) continue
+    ws[key] = JSON.parse(JSON.stringify(tmpl[key]))
+  }
+  ws['!cols'] = tmpl['!cols']
 
-const HEADER_STYLE = s({
-  font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 },
-  fill: { fgColor: { rgb: NAVY } },
-  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-  border: {
-    top:    { style: 'thin', color: { rgb: '000000' } },
-    bottom: { style: 'thin', color: { rgb: '000000' } },
-    left:   { style: 'thin', color: { rgb: '000000' } },
-    right:  { style: 'thin', color: { rgb: '000000' } },
-  },
-})
+  // Update F3 = beginning balance (keep template style)
+  ws['F3'] = { v: beginningBalance, t: 'n', s: ts('F3'), z: '#,##0.00' }
 
-const TOTAL_STYLE = s({
-  font: { bold: true },
-  fill: { fgColor: { rgb: GRAY } },
-  border: {
-    top:    { style: 'thin', color: { rgb: '000000' } },
-    bottom: { style: 'thin', color: { rgb: '000000' } },
-  },
-})
-
-export function generateCashbook(sheetData, treasurerName) {
-  const { label, year, lastDay, beginningBalance, entries } = sheetData
-  const totalDebit  = entries.reduce((s, e) => s + e.debit, 0)
-  const totalCredit = entries.reduce((s, e) => s + e.credit, 0)
-  const endingBalance = entries.length ? entries[entries.length - 1].balance : beginningBalance
-  const monthName = label.split(' ')[0]
-
-  const wb = XLSX.utils.book_new()
-  const ws  = {}
-  const merges = []
-  let r = 0
-
-  // ── Row 1: Title ────────────────────────────────────────────
-  setCell(ws, r, 0, 'CASHBOOK — CASH IN TREASURY', 's', s({
-    font: { bold: true, sz: 13 },
-    fill: { fgColor: { rgb: LIGHT_BLUE } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-  }))
-  merges.push(merge(r, 0, r, 5))
-  r++
-
-  // ── Row 2: Subtitle ─────────────────────────────────────────
-  setCell(ws, r, 0, `Municipality of Dulag  ·  General Fund  ·  ${label}`, 's', CENTER)
-  merges.push(merge(r, 0, r, 5))
-  r++
-
-  // ── Row 3: Spacer ────────────────────────────────────────────
-  r++
-
-  // ── Row 4: Column headers (two-row structure) ────────────────
-  // A: DATE  B: PARTICULARS  C: REFERENCE  D-F: CASH IN TREASURY (merged)
-  setCell(ws, r, 0, 'DATE',         's', HEADER_STYLE)
-  setCell(ws, r, 1, 'PARTICULARS',  's', HEADER_STYLE)
-  setCell(ws, r, 2, 'REFERENCE',    's', HEADER_STYLE)
-  setCell(ws, r, 3, 'CASH IN TREASURY', 's', HEADER_STYLE)
-  setCell(ws, r, 4, '',             's', HEADER_STYLE)
-  setCell(ws, r, 5, '',             's', HEADER_STYLE)
-  merges.push(merge(r, 3, r, 5))   // merge D:F for "CASH IN TREASURY"
-  // A, B, C each span 2 rows
-  merges.push(merge(r, 0, r + 1, 0))
-  merges.push(merge(r, 1, r + 1, 1))
-  merges.push(merge(r, 2, r + 1, 2))
-  r++
-
-  // ── Row 5: Sub-headers ───────────────────────────────────────
-  setCell(ws, r, 0, '', 's', HEADER_STYLE)
-  setCell(ws, r, 1, '', 's', HEADER_STYLE)
-  setCell(ws, r, 2, '', 's', HEADER_STYLE)
-  setCell(ws, r, 3, 'DEBIT',   's', HEADER_STYLE)
-  setCell(ws, r, 4, 'CREDIT',  's', HEADER_STYLE)
-  setCell(ws, r, 5, 'BALANCE', 's', HEADER_STYLE)
-  r++
-
-  // ── Row 6: Beginning Balance ─────────────────────────────────
-  setCell(ws, r, 0, '', 's')
-  setCell(ws, r, 1, 'BEGINNING BALANCE', 's', s({ font: { bold: true }, alignment: { horizontal: 'center' } }))
-  setCell(ws, r, 2, '', 's')
-  setCell(ws, r, 3, '', 's')
-  setCell(ws, r, 4, '', 's')
-  setCell(ws, r, 5, beginningBalance, 'n', BOLD, NUM_FMT)
-  r++
-
-  // ── Data rows ─────────────────────────────────────────────────
-  for (const entry of entries) {
-    setCell(ws, r, 0, entry.fullDate || '', 's')
-    setCell(ws, r, 1, entry.particulars,    's')
-    setCell(ws, r, 2, entry.reference || '', 's')
-    if (entry.debit)  setCell(ws, r, 3, entry.debit,  'n', {}, NUM_FMT)
-    if (entry.credit) setCell(ws, r, 4, entry.credit, 'n', {}, NUM_FMT)
-    setCell(ws, r, 5, entry.balance, 'n', {}, NUM_FMT)
-    r++
+  // Clear rows 4–74 (r=3 to r=73): wipe values/formulas, keep styles
+  for (let r = 3; r <= 73; r++) {
+    for (let c = 0; c <= 8; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c })
+      if (ws[addr]) {
+        ws[addr] = { v: '', t: 's', s: ws[addr].s || {} }
+      }
+    }
   }
 
-  // ── Total row ─────────────────────────────────────────────────
-  setCell(ws, r, 0, '',      's', TOTAL_STYLE)
-  setCell(ws, r, 1, 'TOTAL', 's', s({ ...TOTAL_STYLE, alignment: { horizontal: 'right' } }))
-  setCell(ws, r, 2, '',      's', TOTAL_STYLE)
-  setCell(ws, r, 3, totalDebit,    'n', TOTAL_STYLE, NUM_FMT)
-  setCell(ws, r, 4, totalCredit,   'n', TOTAL_STYLE, NUM_FMT)
-  setCell(ws, r, 5, endingBalance, 'n', TOTAL_STYLE, NUM_FMT)
-  r++
+  // Drop merges in the data area; keep header merges (rows 0–1 only)
+  ws['!merges'] = (tmpl['!merges'] || []).filter(m => m.e.r <= 1)
 
-  // ── Spacer ────────────────────────────────────────────────────
-  r++
+  function setCell(r, c, v, t, s, z) {
+    const addr = XLSX.utils.encode_cell({ r, c })
+    ws[addr] = { v, t: t || (typeof v === 'number' ? 'n' : 's'), s: s || {} }
+    if (z) ws[addr].z = z
+  }
 
-  // ── Certification ─────────────────────────────────────────────
-  setCell(ws, r, 0, 'CERTIFICATION', 's', BOLD)
-  r++
+  function setFml(r, c, f, v, s, z) {
+    const addr = XLSX.utils.encode_cell({ r, c })
+    ws[addr] = { f, v: v || 0, t: 'n', s: s || {} }
+    if (z) ws[addr].z = z
+  }
+
+  // ── Data rows (row 4 onwards) ────────────────────────────────────
+  const DATA_R0 = 3 // 0-indexed; Excel row 4
+
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    const r  = DATA_R0 + i
+    const er = r + 1 // Excel 1-indexed row number
+
+    setCell(r, 0, entry.fullDate || '', 's', ts('A4'))
+    setCell(r, 1, entry.particulars, 's', ts('B4'))
+    setCell(r, 2, '', 's', ts('C4'))
+    if (entry.debit)  setCell(r, 3, entry.debit,  'n', ts('D4'), '#,##0.00')
+    if (entry.credit) setCell(r, 4, entry.credit, 'n', ts('E4'), '#,##0.00')
+    // Balance: prev balance + debit - credit; first row references F3
+    setFml(r, 5, `+F${er - 1}+D${er}-E${er}`, entry.balance, ts('F4'), '#,##0.00')
+  }
+
+  // ── Totals row ────────────────────────────────────────────────────
+  //   DATA_R0=3 → first data Excel row=4, last data Excel row = DATA_R0+N
+  //   where N=entries.length (same numeric value by coincidence of DATA_R0=3)
+  const totR0       = DATA_R0 + entries.length          // 0-indexed
+  const totER       = totR0 + 1                          // Excel row
+  const firstDataER = DATA_R0 + 1                        // = 4
+  const lastDataER  = DATA_R0 + entries.length           // = 3+N (Excel row of last data row)
+
+  const totalDebit  = entries.reduce((s, e) => s + e.debit, 0)
+  const totalCredit = entries.reduce((s, e) => s + e.credit, 0)
+  const endBal      = entries.length ? entries[entries.length - 1].balance : beginningBalance
+
+  setCell(totR0, 0, '', 's', ts('A35'))
+  setCell(totR0, 1, '', 's', ts('B35'))
+  setCell(totR0, 2, '', 's', ts('C35'))
+  setFml(totR0, 3, `SUM(D${firstDataER}:D${lastDataER})`, totalDebit,  ts('D35'), '#,##0.00')
+  setFml(totR0, 4, `SUM(E${firstDataER}:E${lastDataER})`, totalCredit, ts('E35'), '#,##0.00')
+  setFml(totR0, 5, `+F3+D${totER}-E${totER}`,             endBal,      ts('F35'), '#,##0.00')
+
+  // ── Certification (3 blank rows after totals) ─────────────────────
+  const certR = totR0 + 3
 
   const certText =
-    `I hereby certify that the foregoing is a correct and complete record of all my\n` +
-    `collections, deposits/remittances, and balances of my accounts in the Cash in\n` +
-    `Treasury as of ${lastDay}.`
-  setCell(ws, r, 0, certText, 's', s({
-    font: { italic: true },
+    'I HEREBY CERTIFY that the foregoing is a correct and complete record of the cash ' +
+    'transactions had by me in my capacity as Municipal Treasurer of LGU-Dulag, Leyte ' +
+    `during the period from ${monthRange.toUpperCase()}, inclusive, as indicated in the ` +
+    'corresponding columns.'
+
+  setCell(certR, 1, certText, 's', {
+    ...ts('B45'),
     alignment: { wrapText: true, vertical: 'top' },
-  }))
-  merges.push(merge(r, 0, r + 1, 5))
-  r += 2
+  })
+  ws['!merges'].push({ s: { r: certR, c: 1 }, e: { r: certR + 2, c: 3 } })
 
-  r++ // spacer before signature
+  // ── Signature block (5 rows after cert) ───────────────────────────
+  const sigR = certR + 5
 
-  // ── Signature ─────────────────────────────────────────────────
-  const sigStyle = s({ font: { underline: true }, alignment: { horizontal: 'center' } })
-  setCell(ws, r, 1, treasurerName.toUpperCase(), 's', sigStyle)
-  setCell(ws, r, 4, lastDay,                     's', sigStyle)
-  r++
+  const underlineCenter = { font: { underline: true }, alignment: { horizontal: 'center' } }
+  const center          = { alignment: { horizontal: 'center' } }
 
-  setCell(ws, r, 1, 'Municipal Treasurer', 's', CENTER)
-  setCell(ws, r, 4, 'Date',                's', CENTER)
-  r++
+  setCell(sigR,     1, treasurerName.toUpperCase(), 's', underlineCenter)
+  setCell(sigR,     4, lastDay,                     's', underlineCenter)
+  setCell(sigR + 1, 1, 'Municipal Treasurer',       's', center)
+  setCell(sigR + 1, 4, 'Date',                      's', center)
 
-  // ── Worksheet meta ────────────────────────────────────────────
-  ws['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r, c: 5 } })
-  ws['!merges'] = merges
-  ws['!cols']   = [
-    { wch: 12 },   // A Date
-    { wch: 52 },   // B Particulars
-    { wch: 16 },   // C Reference
-    { wch: 16 },   // D Debit
-    { wch: 16 },   // E Credit
-    { wch: 16 },   // F Balance
-  ]
+  // ── Update sheet ref and rename ───────────────────────────────────
+  const lastR = sigR + 2
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: lastR, c: 8 } })
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Cashbook')
-  XLSX.writeFile(wb, `${monthName}_${year}_Cashbook.xlsx`)
+  const newName = label.toLowerCase().replace(' ', '-') + ' '
+  delete wb.Sheets[origName]
+  wb.SheetNames[0] = newName
+  wb.Sheets[newName] = ws
+
+  // ── Download ──────────────────────────────────────────────────────
+  const [monthName] = label.split(' ')
+  XLSX.writeFile(wb, `Cashbook_${monthName}-${year}.xlsx`)
 }
