@@ -24,12 +24,20 @@ export async function generateCashbook(sheetData, treasurerName) {
   // Update F3 = beginning balance (keep template style)
   ws['F3'] = { v: beginningBalance, t: 'n', s: ts('F3'), z: '#,##0.00' }
 
-  // Clear rows 4–74 (r=3 to r=73): wipe values/formulas, keep styles
+  // Clear rows 4–74 (r=3 to r=73): wipe values/formulas, keep styles.
+  // Debit (col 3) and credit (col 4) must stay numeric type (value 0)
+  // so the balance formula +F{prev}+D{row}-E{row} doesn't produce #VALUE!
+  // The format '#,##0.00;;' hides the zero visually.
   for (let r = 3; r <= 73; r++) {
     for (let c = 0; c <= 8; c++) {
       const addr = XLSX.utils.encode_cell({ r, c })
       if (ws[addr]) {
-        ws[addr] = { v: '', t: 's', s: ws[addr].s || {} }
+        const cellStyle = ws[addr].s || {}
+        if (c === 3 || c === 4) {
+          ws[addr] = { v: 0, t: 'n', s: cellStyle, z: '#,##0.00;;' }
+        } else {
+          ws[addr] = { v: '', t: 's', s: cellStyle }
+        }
       }
     }
   }
