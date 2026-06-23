@@ -111,33 +111,61 @@ export async function parseRCDFile(file) {
 export function groupByMonth(allEntries) {
   const map = {}
 
-  for (const entry of allEntries) {
-    const key = `${entry.year}-${String(entry.month).padStart(2, '0')}`
+  for (const rcd of allEntries) {
+    const key = `${rcd.year}-${String(rcd.month).padStart(2, '0')}`
     if (!map[key]) {
-      const last = new Date(entry.year, entry.month, 0).getDate()
+      const last = new Date(rcd.year, rcd.month, 0).getDate()
       map[key] = {
         sheetName: key,
-        label: `${MONTH_NAMES[entry.month]} ${entry.year}`,
-        month: entry.month,
-        year: entry.year,
-        lastDay: `${MONTH_NAMES[entry.month]} ${last}, ${entry.year}`,
+        label: `${MONTH_NAMES[rcd.month]} ${rcd.year}`,
+        month: rcd.month,
+        year: rcd.year,
+        lastDay: `${MONTH_NAMES[rcd.month]} ${last}, ${rcd.year}`,
+        rcds: [],
         entries: [],
         beginningBalance: 0,
         endingBalance: 0,
       }
     }
-    map[key].entries.push(entry)
+    map[key].rcds.push(rcd)
   }
 
   for (const group of Object.values(map)) {
-    group.entries.sort((a, b) => a.day - b.day || a.reportNo.localeCompare(b.reportNo))
-    group.beginningBalance = group.entries[0]?.beginningBalance ?? 0
+    // Sort RCDs by day then report number
+    group.rcds.sort((a, b) => a.day - b.day || a.reportNo.localeCompare(b.reportNo))
+    group.beginningBalance = group.rcds[0]?.beginningBalance ?? 0
 
-    let balance = group.beginningBalance
-    for (const e of group.entries) {
-      balance = balance + e.debit - e.credit
-      e.balance = balance
+    // Expand each RCD into up to 2 cashbook rows
+    const rows = []
+    for (const rcd of group.rcds) {
+      // Row 1 — Collection (Debit)
+      rows.push({
+        displayDate: rcd.displayDate,
+        particulars: rcd.reportNo,
+        reference: rcd.reportNo,
+        debit: rcd.debit,
+        credit: 0,
+      })
+      // Row 2 — Remittance/Deposit (Credit) — only if deposit > 0
+      if (rcd.credit > 0) {
+        rows.push({
+          displayDate: rcd.displayDate,
+          particulars: rcd.reportNo,
+          reference: rcd.reportNo,
+          debit: 0,
+          credit: rcd.credit,
+        })
+      }
     }
+
+    // Compute running balance across all rows
+    let balance = group.beginningBalance
+    for (const row of rows) {
+      balance = balance + row.debit - row.credit
+      row.balance = balance
+    }
+
+    group.entries = rows
     group.endingBalance = balance
   }
 
