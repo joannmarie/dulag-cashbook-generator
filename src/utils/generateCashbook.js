@@ -109,8 +109,8 @@ export function generateCashbook(sheetData, treasurerName) {
     setCell(ws, r, 0, entry.fullDate || '', 's')
     setCell(ws, r, 1, entry.particulars,    's')
     setCell(ws, r, 2, entry.reference || '', 's')
-    setCell(ws, r, 3, entry.debit  || null, entry.debit  ? 'n' : 's', {}, entry.debit  ? NUM_FMT : undefined)
-    setCell(ws, r, 4, entry.credit || null, entry.credit ? 'n' : 's', {}, entry.credit ? NUM_FMT : undefined)
+    if (entry.debit)  setCell(ws, r, 3, entry.debit,  'n', {}, NUM_FMT)
+    if (entry.credit) setCell(ws, r, 4, entry.credit, 'n', {}, NUM_FMT)
     setCell(ws, r, 5, entry.balance, 'n', {}, NUM_FMT)
     r++
   }
