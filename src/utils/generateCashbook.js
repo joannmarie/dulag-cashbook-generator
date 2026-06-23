@@ -76,7 +76,7 @@ export function generateCashbook(sheetData, treasurerName) {
 
   // Data rows
   for (const entry of entries) {
-    setCell(ws, r, 0, { v: '', t: 's' })
+    setCell(ws, r, 0, { v: entry.displayDate || '', t: 's' })
     setCell(ws, r, 1, { v: entry.particulars, t: 's' })
     setCell(ws, r, 2, { v: entry.reference, t: 's' })
     setCell(ws, r, 3, { v: entry.debit, t: 'n', z: NUM_FMT })

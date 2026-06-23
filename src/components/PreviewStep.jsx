@@ -112,7 +112,7 @@ export default function PreviewStep({ sheet, treasurerName, onBack }) {
                 </tr>
                 {preview.map((e, i) => (
                   <tr key={i} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">—</td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{e.displayDate || '—'}</td>
                     <td className="px-3 py-2 text-slate-700 max-w-[160px] truncate">{e.particulars}</td>
                     <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">{e.reference}</td>
                     <td className="px-3 py-2 text-right text-emerald-700">{e.debit ? peso(e.debit) : ''}</td>
