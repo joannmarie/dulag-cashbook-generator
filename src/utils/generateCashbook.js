@@ -1,22 +1,20 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import * as XLSX from 'xlsx'
 
-const NAVY = [26, 53, 87]
-const GOLD = [201, 168, 76]
-const LIGHT_GRAY = [245, 247, 250]
-const DARK_GRAY = [60, 60, 60]
+const HEADER_BLUE = '185FA5'
+const LIGHT_BLUE = 'DDEEFF'
+const GRAY = 'D9D9D9'
+const NUM_FMT = '#,##0.00'
 
-function peso(n) {
-  return (n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function numCell(v, style) {
+  return { v: v ?? 0, t: 'n', z: NUM_FMT, s: style }
 }
 
-function formatDate(dateSerial) {
-  if (!dateSerial) return ''
-  const d = new Date(Math.round((dateSerial - 25569) * 86400 * 1000))
-  if (isNaN(d.getTime())) return ''
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(d.getUTCDate()).padStart(2, '0')
-  return `${m}/${day}`
+function merge(r1, c1, r2, c2) {
+  return { s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }
+}
+
+function setCell(ws, row, col, cellObj) {
+  ws[XLSX.utils.encode_cell({ r: row, c: col })] = cellObj
 }
 
 export function generateCashbook(sheetData, treasurerName) {
@@ -25,150 +23,122 @@ export function generateCashbook(sheetData, treasurerName) {
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0)
   const monthName = label.split(' ')[0]
 
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-  const pageW = doc.internal.pageSize.getWidth()
-  const marginX = 14
+  const wb = XLSX.utils.book_new()
+  const ws = {}
+  const merges = []
+  let r = 0
 
-  // ── Title block ──────────────────────────────────────────────
-  doc.setFillColor(...NAVY)
-  doc.rect(0, 0, pageW, 22, 'F')
-
-  doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text('CASHBOOK — CASH IN TREASURY', pageW / 2, 10, { align: 'center' })
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(...GOLD)
-  doc.text(`Municipality of Dulag  ·  General Fund  ·  ${label}`, pageW / 2, 17, { align: 'center' })
-
-  // Gold accent line
-  doc.setDrawColor(...GOLD)
-  doc.setLineWidth(0.8)
-  doc.line(marginX, 23, pageW - marginX, 23)
-
-  // ── Table ────────────────────────────────────────────────────
-  const tableBody = [
-    // Beginning balance row
-    [
-      { content: '', styles: { fontStyle: 'italic', textColor: DARK_GRAY } },
-      { content: 'Beginning Balance', styles: { fontStyle: 'italic', textColor: DARK_GRAY } },
-      '',
-      '',
-      '',
-      { content: peso(beginningBalance), styles: { halign: 'right', fontStyle: 'italic' } },
-    ],
-    // Data rows
-    ...entries.map((e) => [
-      { content: formatDate(e.dateSerial), styles: { halign: 'center' } },
-      e.particulars,
-      { content: e.reference, styles: { fontSize: 7, textColor: [100, 100, 100] } },
-      { content: e.debit ? peso(e.debit) : '', styles: { halign: 'right' } },
-      { content: e.credit ? peso(e.credit) : '', styles: { halign: 'right' } },
-      { content: peso(e.balance), styles: { halign: 'right' } },
-    ]),
-    // Total row
-    [
-      '',
-      { content: 'TOTAL', styles: { halign: 'right', fontStyle: 'bold' } },
-      '',
-      { content: peso(totalDebit), styles: { halign: 'right', fontStyle: 'bold' } },
-      { content: peso(totalCredit), styles: { halign: 'right', fontStyle: 'bold' } },
-      { content: peso(endingBalance), styles: { halign: 'right', fontStyle: 'bold' } },
-    ],
-  ]
-
-  autoTable(doc, {
-    startY: 27,
-    head: [['Date', 'Particulars', 'Reference', 'Debit', 'Credit', 'Balance']],
-    body: tableBody,
-    margin: { left: marginX, right: marginX },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2.5,
-      lineColor: [220, 220, 220],
-      lineWidth: 0.2,
-      textColor: [30, 30, 30],
-    },
-    headStyles: {
-      fillColor: NAVY,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 8.5,
-      halign: 'center',
-      cellPadding: 3,
-    },
-    columnStyles: {
-      0: { cellWidth: 18, halign: 'center' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 28, halign: 'right' },
-      4: { cellWidth: 28, halign: 'right' },
-      5: { cellWidth: 28, halign: 'right' },
-    },
-    alternateRowStyles: { fillColor: LIGHT_GRAY },
-    didParseCell(data) {
-      // Style beginning balance row
-      if (data.row.index === 0 && data.section === 'body') {
-        data.cell.styles.fillColor = [235, 242, 255]
-      }
-      // Style total row
-      if (data.row.index === tableBody.length - 1 && data.section === 'body') {
-        data.cell.styles.fillColor = NAVY
-        data.cell.styles.textColor = [255, 255, 255]
-      }
+  // Row 1 — title
+  setCell(ws, r, 0, {
+    v: 'CASHBOOK — CASH IN TREASURY',
+    t: 's',
+    s: {
+      font: { bold: true, sz: 13 },
+      fill: { fgColor: { rgb: LIGHT_BLUE } },
+      alignment: { horizontal: 'center', vertical: 'center' },
     },
   })
+  merges.push(merge(r, 0, r, 5))
+  r++
 
-  // ── Certification ─────────────────────────────────────────────
-  const tableEnd = doc.lastAutoTable.finalY + 8
-  const pageH = doc.internal.pageSize.getHeight()
+  // Row 2 — subtitle
+  setCell(ws, r, 0, {
+    v: `Municipality of Dulag · General Fund · ${label}`,
+    t: 's',
+    s: { alignment: { horizontal: 'center', vertical: 'center' } },
+  })
+  merges.push(merge(r, 0, r, 5))
+  r++
 
-  if (tableEnd + 50 > pageH) {
-    doc.addPage()
+  // Row 3 — spacer
+  r++
+
+  // Row 4 — column headers
+  const headers = ['Date', 'Particulars', 'Reference', 'Debit', 'Credit', 'Balance']
+  const hStyle = {
+    font: { bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: HEADER_BLUE } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: { bottom: { style: 'thin', color: { rgb: '000000' } } },
+  }
+  headers.forEach((h, c) => setCell(ws, r, c, { v: h, t: 's', s: hStyle }))
+  r++
+
+  // Row 5 — beginning balance
+  const italicStyle = { font: { italic: true }, alignment: { horizontal: 'left' } }
+  setCell(ws, r, 0, { v: '', t: 's' })
+  setCell(ws, r, 1, { v: 'Beginning Balance', t: 's', s: italicStyle })
+  setCell(ws, r, 2, { v: '', t: 's' })
+  setCell(ws, r, 3, { v: '', t: 's' })
+  setCell(ws, r, 4, { v: '', t: 's' })
+  setCell(ws, r, 5, { v: beginningBalance, t: 'n', z: NUM_FMT, s: italicStyle })
+  r++
+
+  // Data rows
+  for (const entry of entries) {
+    setCell(ws, r, 0, { v: '', t: 's' })
+    setCell(ws, r, 1, { v: entry.particulars, t: 's' })
+    setCell(ws, r, 2, { v: entry.reference, t: 's' })
+    setCell(ws, r, 3, { v: entry.debit, t: 'n', z: NUM_FMT })
+    setCell(ws, r, 4, { v: entry.credit, t: 'n', z: NUM_FMT })
+    setCell(ws, r, 5, { v: entry.balance, t: 'n', z: NUM_FMT })
+    r++
   }
 
-  const certY = tableEnd + 10 > pageH ? 20 : tableEnd
+  // Total row
+  const totStyle = {
+    font: { bold: true },
+    fill: { fgColor: { rgb: GRAY } },
+  }
+  setCell(ws, r, 0, { v: '', t: 's', s: totStyle })
+  setCell(ws, r, 1, { v: 'TOTAL', t: 's', s: { ...totStyle, alignment: { horizontal: 'right' } } })
+  setCell(ws, r, 2, { v: '', t: 's', s: totStyle })
+  setCell(ws, r, 3, numCell(totalDebit, totStyle))
+  setCell(ws, r, 4, numCell(totalCredit, totStyle))
+  setCell(ws, r, 5, numCell(endingBalance, totStyle))
+  r++
 
-  doc.setDrawColor(...NAVY)
-  doc.setLineWidth(0.4)
-  doc.line(marginX, certY, pageW - marginX, certY)
+  // Spacer
+  r++
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...NAVY)
-  doc.text('CERTIFICATION', marginX, certY + 6)
+  // Certification label
+  setCell(ws, r, 0, { v: 'CERTIFICATION', t: 's', s: { font: { bold: true } } })
+  r++
 
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...DARK_GRAY)
   const certText =
-    `I hereby certify that the foregoing is a correct and complete record of all my collections, ` +
-    `deposits/remittances, and balances of my accounts in the Cash in Treasury as of ${lastDay}.`
-  doc.text(certText, marginX, certY + 13, { maxWidth: pageW - marginX * 2 })
+    `I hereby certify that the foregoing is a correct and complete record of all my\n` +
+    `collections, deposits/remittances, and balances of my accounts in the Cash in\n` +
+    `Treasury as of ${lastDay}.`
+  setCell(ws, r, 0, {
+    v: certText,
+    t: 's',
+    s: {
+      font: { italic: true },
+      alignment: { wrapText: true, vertical: 'top' },
+    },
+  })
+  merges.push(merge(r, 0, r + 1, 5))
+  r += 2
 
-  // Signature lines
-  const sigY = certY + 28
-  const nameX = marginX + 20
-  const dateX = pageW - marginX - 60
+  r++ // spacer before signature
 
-  doc.setDrawColor(...NAVY)
-  doc.setLineWidth(0.5)
-  doc.line(nameX, sigY, nameX + 80, sigY)
-  doc.line(dateX, sigY, dateX + 55, sigY)
+  // Signature
+  const sigStyle = { font: { underline: true }, alignment: { horizontal: 'center' } }
+  setCell(ws, r, 1, { v: treasurerName.toUpperCase(), t: 's', s: sigStyle })
+  setCell(ws, r, 4, { v: lastDay, t: 's', s: sigStyle })
+  r++
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...NAVY)
-  doc.text(treasurerName.toUpperCase(), nameX + 40, sigY - 2, { align: 'center' })
+  setCell(ws, r, 1, { v: 'Municipal Treasurer', t: 's', s: { alignment: { horizontal: 'center' } } })
+  setCell(ws, r, 4, { v: 'Date', t: 's', s: { alignment: { horizontal: 'center' } } })
+  r++
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(100, 100, 100)
-  doc.text('Municipal Treasurer', nameX + 40, sigY + 4, { align: 'center' })
-  doc.text(lastDay, dateX + 27.5, sigY - 2, { align: 'center' })
-  doc.text('Date', dateX + 27.5, sigY + 4, { align: 'center' })
+  ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r, c: 5 } })
+  ws['!merges'] = merges
+  ws['!cols'] = [
+    { wch: 10 }, { wch: 45 }, { wch: 18 },
+    { wch: 15 }, { wch: 15 }, { wch: 15 },
+  ]
 
-  doc.save(`${monthName}_${year}_Cashbook.pdf`)
+  XLSX.utils.book_append_sheet(wb, ws, 'Cashbook')
+  XLSX.writeFile(wb, `${monthName}_${year}_Cashbook.xlsx`)
 }
