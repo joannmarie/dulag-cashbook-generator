@@ -142,7 +142,7 @@ export function groupByMonth(allEntries) {
       rows.push({
         displayDate: rcd.displayDate,
         particulars: rcd.reportNo,
-        reference: rcd.reportNo,
+        reference: '',
         debit: rcd.debit,
         credit: 0,
       })
@@ -151,7 +151,7 @@ export function groupByMonth(allEntries) {
         rows.push({
           displayDate: rcd.displayDate,
           particulars: rcd.reportNo,
-          reference: rcd.reportNo,
+          reference: '',
           debit: 0,
           credit: rcd.credit,
         })
