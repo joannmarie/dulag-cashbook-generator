@@ -12,7 +12,7 @@ export default function App() {
 
   function handleParsed(parsedSheets) {
     setSheets(parsedSheets)
-    setSelected(null)
+    setSelected(parsedSheets.length === 1 ? parsedSheets[0] : null)
     setStep(1)
   }
 
