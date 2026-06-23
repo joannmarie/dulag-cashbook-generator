@@ -63,12 +63,13 @@ function parseRCDPage(text) {
     ? `CPQ-${cpqMatch[1]}-${cpqMatch[2]}-${cpqMatch[3]}`
     : ''
 
-  // ── Grand Total Collection ───────────────────────────────────
-  const collectionMatch = text.match(/GRAND\s+TOTAL\s+COLLECTION\s*[:\s]+([\d,]+\.\d{2})/i)
+  // ── Collection (Debit) from Summary section ──────────────────
+  // "ADD : Collection  697,123.67" — first amount after the label
+  const collectionMatch = text.match(/ADD\s*[:\s]+Collection\s+([\d,]+\.\d{2})/i)
   if (!collectionMatch) return null
 
-  // ── Deposit ──────────────────────────────────────────────────
-  // "LESS : Deposit  1,305,399.17" — amount is first number after the label
+  // ── Remittance / Deposit (Credit) from Summary section ───────
+  // "LESS : Deposit  1,305,399.17"
   const depositMatch = text.match(/LESS\s*[:\s]+Deposit\s+([\d,]+\.\d{2})/i)
 
   // ── Beginning Balance ────────────────────────────────────────
