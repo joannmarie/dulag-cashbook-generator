@@ -96,9 +96,15 @@ export default function PreviewStep({ sheet, treasurerName, onBack }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-[#1a3557]">
-                  {['Date', 'Particulars', 'Reference', 'Debit', 'Credit', 'Balance'].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left text-white font-semibold whitespace-nowrap">{h}</th>
-                  ))}
+                  <th rowSpan={2} className="px-3 py-2 text-center text-white font-semibold border-r border-blue-400">Date</th>
+                  <th rowSpan={2} className="px-3 py-2 text-center text-white font-semibold border-r border-blue-400">Particulars</th>
+                  <th rowSpan={2} className="px-3 py-2 text-center text-white font-semibold border-r border-blue-400">Reference</th>
+                  <th colSpan={3} className="px-3 py-2 text-center text-white font-semibold">Cash in Treasury</th>
+                </tr>
+                <tr className="bg-[#1a3557]">
+                  <th className="px-3 py-2 text-center text-white font-semibold border-r border-blue-400">Debit</th>
+                  <th className="px-3 py-2 text-center text-white font-semibold border-r border-blue-400">Credit</th>
+                  <th className="px-3 py-2 text-center text-white font-semibold">Balance</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,7 +118,7 @@ export default function PreviewStep({ sheet, treasurerName, onBack }) {
                 </tr>
                 {preview.map((e, i) => (
                   <tr key={i} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{e.displayDate || '—'}</td>
+                    <td className="px-3 py-2 text-slate-500 whitespace-nowrap">{e.fullDate || '—'}</td>
                     <td className="px-3 py-2 text-slate-700 max-w-[160px] truncate">{e.particulars}</td>
                     <td className="px-3 py-2 text-slate-500 font-mono text-[11px]">{e.reference}</td>
                     <td className="px-3 py-2 text-right text-emerald-700">{e.debit ? peso(e.debit) : ''}</td>

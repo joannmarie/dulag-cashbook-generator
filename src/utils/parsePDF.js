@@ -138,10 +138,13 @@ export function groupByMonth(allEntries) {
     // Expand each RCD into up to 2 cashbook rows
     const rows = []
     for (const rcd of group.rcds) {
+      const particulars = `Report of Collections & Deposit - ${rcd.reportNo}`
+      const fullDate = `${rcd.month}/${rcd.day}/${rcd.year}`
+
       // Row 1 — Collection (Debit)
       rows.push({
-        displayDate: rcd.displayDate,
-        particulars: rcd.reportNo,
+        fullDate,
+        particulars,
         reference: '',
         debit: rcd.debit,
         credit: 0,
@@ -149,8 +152,8 @@ export function groupByMonth(allEntries) {
       // Row 2 — Remittance/Deposit (Credit) — only if deposit > 0
       if (rcd.credit > 0) {
         rows.push({
-          displayDate: rcd.displayDate,
-          particulars: rcd.reportNo,
+          fullDate,
+          particulars,
           reference: '',
           debit: 0,
           credit: rcd.credit,
