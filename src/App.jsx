@@ -63,7 +63,7 @@ export default function App() {
             <div>
               <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-0.5">Republic of the Philippines</p>
               <h1 className="text-white font-bold text-xl leading-tight">Municipality of Dulag</h1>
-              <p className="text-amber-300 text-sm font-medium">Municipal Treasurer's Office · General Fund</p>
+              <p className="text-amber-300 text-sm font-medium">Municipal Treasurer's Office</p>
             </div>
             <div className="ml-auto text-right hidden sm:block">
               <span className="inline-block bg-amber-400 text-[#1a3557] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
