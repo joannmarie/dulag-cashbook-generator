@@ -4,6 +4,38 @@ import UploadStep from './components/UploadStep.jsx'
 import ConfigureStep from './components/ConfigureStep.jsx'
 import PreviewStep from './components/PreviewStep.jsx'
 
+function BuyMeACoffee() {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => {
+          setOpen(o => !o)
+          if (typeof gtag !== 'undefined') {
+            gtag('event', 'buy_me_a_coffee_click', { event_category: 'engagement' })
+          }
+        }}
+        className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 active:scale-95 transition-all duration-150 text-gray-900 font-bold text-sm px-4 py-2 rounded-full shadow-md"
+        style={{ fontFamily: 'Georgia, serif' }}
+      >
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2 3h16l-1.5 10.5A2 2 0 0 1 14.52 15H7.48a2 2 0 0 1-1.98-1.5L4 7H2V3zm2 2v2h1.27l1.25 8.75A.5.5 0 0 0 7.48 16h7.04a.5.5 0 0 0 .495-.43L16.73 7H4zM18 5h2a2 2 0 0 1 0 4h-2V5zm0 2v2h2a1 1 0 0 0 0-2h-2zM7 18h10v2H7v-2z"/>
+        </svg>
+        Buy me a coffee
+      </button>
+      {open && (
+        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-white border border-yellow-300 rounded-2xl shadow-xl px-5 py-4 text-center w-56 z-50">
+          <p className="text-xs text-slate-500 mb-1">Send via GCash</p>
+          <p className="text-2xl font-bold text-gray-900 tracking-wider">09369096992</p>
+          <p className="text-xs text-slate-600 mt-1">J* A** M**** C.</p>
+          <p className="text-xs text-yellow-600 mt-2">Thank you so much! ☕</p>
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-2 w-4 h-4 bg-white border-r border-b border-yellow-300 rotate-45" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [step, setStep] = useState(0)
   const [sheets, setSheets] = useState([])
@@ -81,6 +113,11 @@ export default function App() {
           <span>All processing done in your browser</span>
           <span className="text-slate-300">·</span>
           <span>No data sent to any server</span>
+        </div>
+
+        {/* Buy me a coffee */}
+        <div className="mt-4 flex justify-center">
+          <BuyMeACoffee />
         </div>
       </div>
     </div>
